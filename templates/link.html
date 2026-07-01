@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Link Shortener</title>
+    <link rel="stylesheet" href="/static/bootstrap.min.css">
+    <script defer src="https://analytics.simoni.dev/script.js" data-website-id="188924a5-0801-4ca2-ad4b-18442ddf6d29"></script>
+</head>
+<body>
+    <div class="bg-white dark-bg d-flex justify-content-center align-items-center vh-100 px-5">
+        <div class="border shadow-sm p-4">
+            <h1 class="display-6 font-weight-bold pb-3">Link Shortener</h1>
+            <p>Redirecting to {{.Url}} in <span id="countdown">5</span> seconds...</p>
+        </div>
+    </div>
+    <script>
+        let countdown = 5;
+        const countdownElement = document.getElementById("countdown");
+        const interval = setInterval(() => {
+            countdown--;
+            if (countdown === 0) {
+                clearInterval(interval);
+            } else {
+                countdownElement.textContent = countdown;
+            }
+        }, 1000);
+        setTimeout(function() {
+            window.location.href = "{{.Url}}";
+        }, 5000);
+    </script>
+</body>
+</html>
