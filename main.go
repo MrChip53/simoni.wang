@@ -9,8 +9,8 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/mrchip53/simoni.wang/database"
 )
@@ -43,13 +43,17 @@ func main() {
 		log.Fatal("Unable to parse templates:", err)
 	}
 
-	conn, err := pgx.Connect(ctx, os.Getenv("POSTGRES_URL"))
+	pool, err := pgxpool.New(ctx, os.Getenv("POSTGRES_URL"))
 	if err != nil {
-		log.Fatal("Unable to connect to database:", err)
+		log.Fatal("Unable to create connection pool:", err)
 	}
-	defer conn.Close(ctx)
+	defer pool.Close()
 
-	queries := database.New(conn)
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatal("Unable to ping database pool:", err)
+	}
+
+	queries := database.New(pool)
 
 	mux := http.NewServeMux()
 
