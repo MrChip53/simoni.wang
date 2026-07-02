@@ -12,25 +12,56 @@ import (
 )
 
 const createLink = `-- name: CreateLink :one
-INSERT INTO links (url)
-VALUES ($1)
-RETURNING id, url, created_at
+INSERT INTO links (url, slug)
+VALUES ($1, $2)
+RETURNING id, url, slug, created_at
 `
 
-func (q *Queries) CreateLink(ctx context.Context, url string) (Link, error) {
-	row := q.db.QueryRow(ctx, createLink, url)
+type CreateLinkParams struct {
+	Url  string
+	Slug pgtype.Text
+}
+
+func (q *Queries) CreateLink(ctx context.Context, arg CreateLinkParams) (Link, error) {
+	row := q.db.QueryRow(ctx, createLink, arg.Url, arg.Slug)
 	var i Link
-	err := row.Scan(&i.ID, &i.Url, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Url,
+		&i.Slug,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
 const getLink = `-- name: GetLink :one
-SELECT id, url, created_at FROM links WHERE id = $1
+SELECT id, url, slug, created_at FROM links WHERE id = $1
 `
 
 func (q *Queries) GetLink(ctx context.Context, id pgtype.UUID) (Link, error) {
 	row := q.db.QueryRow(ctx, getLink, id)
 	var i Link
-	err := row.Scan(&i.ID, &i.Url, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Url,
+		&i.Slug,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getLinkBySlug = `-- name: GetLinkBySlug :one
+SELECT id, url, slug, created_at FROM links WHERE slug = $1
+`
+
+func (q *Queries) GetLinkBySlug(ctx context.Context, slug pgtype.Text) (Link, error) {
+	row := q.db.QueryRow(ctx, getLinkBySlug, slug)
+	var i Link
+	err := row.Scan(
+		&i.ID,
+		&i.Url,
+		&i.Slug,
+		&i.CreatedAt,
+	)
 	return i, err
 }

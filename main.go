@@ -24,7 +24,13 @@ var (
 )
 
 type CreateLinkRequest struct {
-	URL string `json:"url"`
+	URL  string  `json:"url"`
+	Slug *string `json:"slug,omitempty"`
+}
+
+type CreateLinkResponse struct {
+	ID   string  `json:"id"`
+	Slug *string `json:"slug,omitempty"`
 }
 
 func main() {
@@ -69,18 +75,46 @@ func main() {
 			return
 		}
 
-		res, err := queries.CreateLink(r.Context(), body.URL)
+		res, err := queries.CreateLink(r.Context(), database.CreateLinkParams{
+			Url:  body.URL,
+			Slug: PointerStringToPgText(body.Slug),
+		})
 		if err != nil {
 			http.Error(w, "Failed to create link", http.StatusInternalServerError)
 			return
 		}
 
-		response := map[string]string{
-			"id": encodeUUIDBytesToBase62(res.ID.Bytes),
+		response := CreateLinkResponse{
+			ID:   encodeUUIDBytesToBase62(res.ID.Bytes),
+			Slug: PgTextToPointerString(res.Slug),
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(response)
+	})
+
+	// Link resolution
+	mux.HandleFunc("/s/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		slug := r.PathValue("slug")
+
+		if slug == "" {
+			http.Error(w, "Slug is required", http.StatusBadRequest)
+			return
+		}
+
+		res, err := queries.GetLinkBySlug(r.Context(), PointerStringToPgText(&slug))
+		if err != nil {
+			http.Error(w, "Link not found", http.StatusNotFound)
+			return
+		}
+
+		err = tmpl.ExecuteTemplate(w, "link.html", map[string]any{
+			"Url": res.Url,
+		})
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	})
 
 	// Link resolution

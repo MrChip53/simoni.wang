@@ -11,5 +11,6 @@ import (
 type Link struct {
 	ID        pgtype.UUID
 	Url       string
+	Slug      pgtype.Text
 	CreatedAt pgtype.Timestamptz
 }
