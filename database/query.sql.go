@@ -34,6 +34,44 @@ func (q *Queries) CreateLink(ctx context.Context, arg CreateLinkParams) (Link, e
 	return i, err
 }
 
+const deleteLink = `-- name: DeleteLink :exec
+DELETE FROM links WHERE id = $1
+`
+
+func (q *Queries) DeleteLink(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteLink, id)
+	return err
+}
+
+const getLastNLinks = `-- name: GetLastNLinks :many
+SELECT id, url, slug, created_at FROM links ORDER BY created_at DESC LIMIT $1
+`
+
+func (q *Queries) GetLastNLinks(ctx context.Context, limit int32) ([]Link, error) {
+	rows, err := q.db.Query(ctx, getLastNLinks, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Link
+	for rows.Next() {
+		var i Link
+		if err := rows.Scan(
+			&i.ID,
+			&i.Url,
+			&i.Slug,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLink = `-- name: GetLink :one
 SELECT id, url, slug, created_at FROM links WHERE id = $1
 `

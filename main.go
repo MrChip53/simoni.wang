@@ -62,7 +62,43 @@ func main() {
 
 	// Landing page
 	mux.HandleFunc("/{$}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Maybe I will put something here in the future."))
+		links, err := queries.GetLastNLinks(r.Context(), 10)
+		if err != nil {
+			http.Error(w, "Failed to fetch links", http.StatusInternalServerError)
+			return
+		}
+
+		encodedLinks := make([]map[string]any, len(links))
+		for i, link := range links {
+			timeStr := link.CreatedAt.Time.Format("2006-01-02 15:04:05")
+			encodedLinks[i] = map[string]any{
+				"ID":        encodeUUIDBytesToBase62(link.ID.Bytes),
+				"Url":       link.Url,
+				"Slug":      PgTextToPointerString(link.Slug),
+				"CreatedAt": timeStr,
+			}
+		}
+
+		err = tmpl.ExecuteTemplate(w, "index.html", encodedLinks)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	})
+
+	// Delete link API
+	mux.HandleFunc("POST /api/delete/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+
+		uuidBytes := decodeBase62ToUUID(id)
+
+		err := queries.DeleteLink(r.Context(), pgtype.UUID{Bytes: uuidBytes, Valid: true})
+		if err != nil {
+			http.Error(w, "Failed to delete link", http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
 	// Create link API
